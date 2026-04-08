@@ -205,3 +205,25 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+
+# Environment secrets — NEVER commit this
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Generated test files (optional — can commit these for demo)
+# tests/generated/*.py
+
+# Test reports
+reports/*.json
+reports/*.html
+reports/*.txt
+
+# Playwright
+playwright-report/
+test-results/
