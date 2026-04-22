@@ -7,19 +7,15 @@ print("TEST 1: Good story with enough info")
 print("=" * 60)
 
 result = parse_requirements(
-    card_name="User Login Feature",
+    card_name="Login page | Username and password validation",
     card_description="""
-    As a user, I want to log in to the application using my email and password.
+    Valid credentials redirect to inventory  (/inventory).
+    Wrong password shows: "Username and Password do not match any user"
+    Empty fields show: "Username / Password is required"
 
-    Acceptance Criteria:
-    - Valid email + password should redirect to the dashboard
-    - Invalid credentials should show error message "Invalid email or password"
-    - Empty fields should show "This field is required"
-    - Forgot Password link should be visible on the login page
-
-    App URL: https://practice.expandtesting.com/login
-    Test email: practice@expandtesting.com
-    Test password: SuperSecretPassword123
+    App URL: https://www.saucedemo.com/inventory.html
+    Test Username : standard_user
+    Test password: secret_sauce
     """
 )
 
