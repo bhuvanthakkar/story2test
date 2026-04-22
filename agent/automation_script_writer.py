@@ -124,20 +124,29 @@ Use playwright's expect() for assertions:
     from playwright.sync_api import expect
     expect(page.locator("h1")).to_contain_text("Dashboard")
 
-RULE 6 — WRITE 3 TESTS MINIMUM:
-- At least 1 happy path test
-- At least 1 negative test (wrong input)
-- At least 1 edge case or additional scenario
+RULE 6 — AUTOMATE SCENARIOS WHICH FEELS MUST FOR THE MODULE
+Write a separate pytest test function for EVERY scenario in the test cases provided.
+Try not to skip any scenarios unless looks redudant or one covers as part of another, based on that write all test functions.
+Name each function clearly: test_TC001_description, test_TC002_description etc.
 
 RULE 7 — IMPORTABLE dotenv:
 Add at the very top of the file:
     from dotenv import load_dotenv
     load_dotenv()
 
-"RULE 8 — CLASS ASSERTIONS: Never use to_have_class() with a plain string "
-"for multi-class elements. Always use re.compile() for partial class matching: "
-"expect(el).to_have_class(re.compile(r'class-name')). "
-"Prefer asserting on visible text over CSS classes whenever possible."
+RULE 8 — CLASS ASSERTIONS: Never use to_have_class() with a plain string 
+for multi-class elements. Always use re.compile() for partial class matching: 
+expect(el).to_have_class(re.compile(r'class-name')). 
+Prefer asserting on visible text over CSS classes whenever possible.
+
+RULE 9 — ASSERTIONS MUST MATCH ACTUAL APP BEHAVIOUR:
+When asserting error messages, use to_contain_text() with a SHORT substring
+not the full exact string. Example:
+    WRONG: expect(el).to_contain_text('Username and Password do not match any user')
+    RIGHT: expect(el).to_contain_text('do not match')
+Short substrings are resilient to prefix changes like 'Epic sadface: ' etc.
+Always use the shortest unique meaningful substring of the expected message by which it can be derived that what it is trying to say and prefer short substring as there can be scenarios where UI displayed error and BTS could be different
+
 
 OUTPUT: Write ONLY the Python code.
 No explanation before or after.
