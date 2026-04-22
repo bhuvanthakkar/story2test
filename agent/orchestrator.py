@@ -1,14 +1,18 @@
+#We are deprecating the old Trello Support, as it was a pilot project just to try hands-on, with this now we're adding support for Atlassian Jira
+
 """
-Main QA Agent orchestrator.
-Full pipeline: Trello card → parse → test cases → script → run → report
+Main Story2Test orchestrator.
+Full pipeline: Jira issue → parse → Move from TO-DO to IN PROGRESS → test cases → script → run → report → Move to DONE
 """
+
+
 
 import time
 import os
 from dotenv import load_dotenv
 
-from trello_reader import (
-    get_cards_in_list,
+from jira_client import (
+    get_issues_in_status,
     post_comment,
     move_card,
 )
@@ -16,23 +20,23 @@ from requirement_parser import parse_requirements
 from test_cases_generator import generate_test_cases
 from automation_script_writer import write_playwright_script
 from script_runner import run_test_script, diagnose_failure
-from reporter import build_trello_report
+from reporter import build_trello_report as build_report, build_requirements_comment, build_blocker_comment
 
 load_dotenv()
 
-# Track processed cards in this session (reset on restart)
-processed_card_ids: set = set()
+# Track processed issues in this session (reset on restart)
+processed_issue_keys: set = set()
 
 
-def process_card(card: dict):
-    """Run the full 5-step QA agent pipeline for one card."""
+def process_issue(issue: dict):
+    """Run the full 5-step Story2Test pipeline for one Jira issue."""
 
-    card_id   = card["id"]
-    card_name = card.get("name", "Untitled")
-    card_desc = card.get("desc", "")
+    card_id   = issue["key"]
+    card_name = issue.get("name", "Untitled")
+    card_desc = issue.get("desc", "")
 
     print(f"\n{'='*60}")
-    print(f"🤖 Card: {card_name}")
+    print(f"🤖 Issue: {card_name}")
     print(f"{'='*60}")
 
     # ── Step 1: Parse requirements ───────────────────────────
@@ -41,8 +45,8 @@ def process_card(card: dict):
         parsed = parse_requirements(card_name, card_desc)
     except Exception as e:
         post_comment(card_id,
-            f"## ❌ QA Agent — Parse Error\n\n```\n{e}\n```\n\n"
-            f"*Automated by QA Agent Pipeline*")
+            f"## ❌ Story2Test — Parse Error\n\n```\n{e}\n```\n\n"
+            f"*Automated by Story2Test*")
         print(f"   ERROR: {e}")
         return
 
@@ -51,34 +55,12 @@ def process_card(card: dict):
 
     # Early exit if critical info missing
     if parsed["has_blockers"]:
-        blocker_comment = (
-            "## 🚫 QA Agent — Blocked\n\n"
-            "**Cannot proceed — missing critical information:**\n\n"
-        )
-        for item in parsed["missing_info"]:
-            blocker_comment += f"- {item}\n"
-        blocker_comment += (
-            "\nPlease update this card with the missing details.\n"
-            "The agent will retry on the next check.\n\n"
-            "*Automated by QA Agent Pipeline*"
-        )
-        post_comment(card_id, blocker_comment)
-        print("   ⚠️  Blockers found — posted to card and stopping.")
+        post_comment(card_id, build_blocker_comment(parsed["missing_info"]))
+        print("   ⚠️  Blockers found — posted to issue and stopping.")
         return
 
     # Post requirements summary
-    req_lines = "\n".join(f"- {r}" for r in parsed["requirements"])
-    sc_lines  = "\n".join(
-        f"- [{s['id']}] {s['title']} ({s['type']})"
-        for s in parsed["test_scenarios"]
-    )
-    post_comment(card_id,
-        f"## 📋 QA Agent — Requirements Parsed\n\n"
-        f"**Summary:** {parsed['summary']}\n\n"
-        f"**Requirements:**\n{req_lines}\n\n"
-        f"**Test Scenarios ({len(parsed['test_scenarios'])}):**\n{sc_lines}\n\n"
-        f"*Generating test cases next...*"
-    )
+    post_comment(card_id, build_requirements_comment(parsed))
 
     # ── Step 2: Generate test cases ──────────────────────────
     print("✍️  Step 2 — Generating test cases...")
@@ -118,50 +100,50 @@ def process_card(card: dict):
         print("🔍 Step 5 — Diagnosing failure with Claude...")
         diagnosis = diagnose_failure(run_result, script_path)
 
-    print("📨 Posting final report to Trello...")
-    report = build_trello_report(
+    print("📨 Posting final report to Jira...")
+    report = build_report(
         run_result, diagnosis, tc_filepath, script_path, card_name
     )
     post_comment(card_id, report)
 
-    # Move card to Done or keep In Progress based on result
+    # Move issue to Done or keep In Progress based on result
     final_list = "Done" if run_result["success"] else "In Progress"
     move_card(card_id, final_list)
 
     status = "✅ PASSED" if run_result["success"] else "❌ FAILED"
-    print(f"\n   {status} — Results posted to Trello card.")
-    print(f"   Card URL: {card.get('url', 'N/A')}")
+    print(f"\n   {status} — Results posted to Jira issue.")
+    print(f"   Issue URL: {issue.get('url', 'N/A')}")
 
 
 def run_once():
-    """Process all cards in Backlog — run once manually."""
-    print("🚀 QA Agent — Single Run")
-    cards = get_cards_in_list("Backlog")
-    print(f"   Cards in Backlog: {len(cards)}")
-    if not cards:
-        print("   No cards found. Create one and run again.")
+    """Process all issues in To Do — run once manually."""
+    print("🚀 Story2Test Agent — Single Run")
+    issues = get_issues_in_status("TO-DO")
+    print(f"   Issues in To Do: {len(issues)}")
+    if not issues:
+        print("   No issues found. Create one in Jira TO-DO and run again.")
         return
-    for card in cards:
-        process_card(card)
+    for issue in issues:
+        process_issue(issue)
 
 
 def run_polling_loop(interval_seconds: int = 60):
-    """Poll Trello every N seconds for new Backlog cards."""
-    print(f"🚀 QA Agent — Polling every {interval_seconds}s (Ctrl+C to stop)\n")
+    """Poll Jira every N seconds for new To Do issues."""
+    print(f"🚀 Story2Test — Polling every {interval_seconds}s (Ctrl+C to stop)\n")
     while True:
         try:
-            cards = get_cards_in_list("Backlog")
-            new = [c for c in cards if c["id"] not in processed_card_ids]
+            issues = get_issues_in_status("To Do")
+            new = [i for i in issues if i["key"] not in processed_issue_keys]
             if new:
-                print(f"\nNew card(s) found: {len(new)}")
-                for card in new:
-                    processed_card_ids.add(card["id"])
-                    process_card(card)
+                print(f"\nNew issue(s) found: {len(new)}")
+                for issue in new:
+                    processed_issue_keys.add(issue["key"])
+                    process_issue(issue)
             else:
                 print(f"  Waiting... ({interval_seconds}s) ", end="\r")
             time.sleep(interval_seconds)
         except KeyboardInterrupt:
-            print("\n\nAgent stopped.")
+            print("\n\nStory2Test Agent stopped.")
             break
 
 
