@@ -4,6 +4,7 @@ and asks Claude to diagnose any failures
 """
 
 import subprocess
+import sys
 import os
 import json
 import anthropic
