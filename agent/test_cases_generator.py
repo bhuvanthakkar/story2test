@@ -98,7 +98,7 @@ Be specific and precise. A junior QA engineer should be able to follow these ste
 
     # Make sure the reports folder exists
     os.makedirs("reports", exist_ok=True)
-    filepath = f"reports/test_cases_{card_id}.txt"
+    filepath = os.path.join("reports", f"test_cases_{card_id}.txt")
 
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(f"# Test Cases — Card {card_id}\n\n")
