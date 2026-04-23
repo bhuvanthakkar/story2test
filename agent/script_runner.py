@@ -1,9 +1,10 @@
 """
 Executes a generated pytest file, captures output,
-and asks Claude to diagnose any failures.
+and asks Claude to diagnose any failures
 """
 
 import subprocess
+import sys
 import os
 import json
 import anthropic
